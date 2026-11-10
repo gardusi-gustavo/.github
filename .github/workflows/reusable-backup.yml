@@ -39,6 +39,6 @@ jobs:
           BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
       - uses: actions/upload-artifact@v4
         with:
-          name: bundle-${{ github.repository }}-${{ github.run_id }}
+          name: bundle-${{ github.repository_id }}-${{ github.run_id }}
           path: bundles
           retention-days: ${{ inputs.retention }}
