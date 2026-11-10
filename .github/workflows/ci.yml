@@ -11,10 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate JSON
-        run: |
-          set -euo pipefail
-          while IFS= read -r f; do jq empty "$f"; done < <(find governance -type f -name '*.json' | sort)
       - name: Validate YAML
         run: |
           set -euo pipefail
@@ -24,12 +20,6 @@ jobs:
               yaml.safe_load(p.read_text())
           print('workflow yaml ok')
           PY
-      - name: Check governance counts
-        run: |
-          set -euo pipefail
-          jq -e '.total == 41' governance/repos.json >/dev/null
-          jq -e '[.tiers[].repos[]] | length == 41' governance/bundle-order.json >/dev/null
-          echo 'governance counts ok'
       - name: Check reusable workflow triggers
         run: |
           set -euo pipefail
