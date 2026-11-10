@@ -5,6 +5,12 @@ on:
       build_command:
         type: string
         default: "python3 scripts/build.py --database _database --out dist"
+      database_repository:
+        type: string
+        default: "gardusi-gustavo/database-devops"
+      database_path:
+        type: string
+        default: "_database"
 permissions:
   contents: read
   pages: write
@@ -17,8 +23,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
-          repository: gardusi-gustavo/database
-          path: _database
+          repository: ${{ inputs.database_repository }}
+          path: ${{ inputs.database_path }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
