@@ -24,6 +24,12 @@ jobs:
               yaml.safe_load(p.read_text())
           print('workflow yaml ok')
           PY
+      - name: Check governance counts
+        run: |
+          set -euo pipefail
+          jq -e '.total == 41' governance/repos.json >/dev/null
+          jq -e '[.tiers[].repos[]] | length == 41' governance/bundle-order.json >/dev/null
+          echo 'governance counts ok'
       - name: Check reusable workflow triggers
         run: |
           set -euo pipefail
