@@ -435,15 +435,15 @@
     },
     {
       "group": "gardusi-gustavo",
-      "name": "workflow-agent",
-      "git_path": "/srv/gitea/data/git/repositories/gardusi-gustavo/workflow-agent.git",
+      "name": "workflow-manual",
+      "git_path": "/srv/gitea/data/git/repositories/gardusi-gustavo/workflow-manual.git",
       "section": 3,
       "visibility": "public",
       "platform": [
         "gitea",
         "github"
       ],
-      "github": "gardusi-gustavo/workflow-agent"
+      "github": "gardusi-gustavo/workflow-manual"
     },
     {
       "group": "gardusi-gustavo",

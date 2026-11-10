@@ -45,7 +45,7 @@
       "repos": [
         "gardusi-gustavo/workflow-event",
         "gardusi-gustavo/workflow-scheduled",
-        "gardusi-gustavo/workflow-agent"
+        "gardusi-gustavo/workflow-manual"
       ]
     },
     {
