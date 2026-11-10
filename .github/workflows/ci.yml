@@ -1,0 +1,33 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate JSON
+        run: |
+          set -euo pipefail
+          while IFS= read -r f; do jq empty "$f"; done < <(find governance -type f -name '*.json' | sort)
+      - name: Validate YAML
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib, yaml
+          for p in sorted(pathlib.Path('.github/workflows').glob('*.yml')):
+              yaml.safe_load(p.read_text())
+          print('workflow yaml ok')
+          PY
+      - name: Check reusable workflow triggers
+        run: |
+          set -euo pipefail
+          for f in .github/workflows/reusable-*.yml; do
+            grep -q 'workflow_call:' "$f" || { echo "$f is missing workflow_call"; exit 1; }
+          done
+          echo 'reusable workflows ok'
