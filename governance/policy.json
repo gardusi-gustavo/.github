@@ -166,11 +166,16 @@
     "gardusi-gustavo/contract-json",
     "gardusi-gustavo/contract-proto",
     "gardusi-gustavo/contract-sql",
+    "gardusi-gustavo/dashboard-devops",
     "gardusi-gustavo/dashboard-lottery",
     "gardusi-gustavo/dashboard-news",
     "gardusi-gustavo/dashboard-stocks",
     "gardusi-gustavo/dashboard-wiki",
-    "gardusi-gustavo/database",
+    "gardusi-gustavo/database-agent",
+    "gardusi-gustavo/database-devops",
+    "gardusi-gustavo/database-lottery",
+    "gardusi-gustavo/database-news",
+    "gardusi-gustavo/database-stocks",
     "gardusi-gustavo/game-crosswords",
     "gardusi-gustavo/game-logic-grid",
     "gardusi-gustavo/game-sudoku",
@@ -193,9 +198,7 @@
     "gardusi-gustavo/package-ui",
     "gardusi-gustavo/package-zig",
     "gardusi-gustavo/workflow-agent",
-    "gardusi-gustavo/workflow-devops",
-    "gardusi-gustavo/workflow-lottery",
-    "gardusi-gustavo/workflow-news",
-    "gardusi-gustavo/workflow-stocks"
+    "gardusi-gustavo/workflow-event",
+    "gardusi-gustavo/workflow-scheduled"
   ]
 }
