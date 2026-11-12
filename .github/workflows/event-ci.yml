@@ -25,7 +25,8 @@ jobs:
       - name: Detect container
         id: container
         run: |
-          if [ -f infra/docker/ci.dockerfile ]; then
+          container="$(jq -r '.ci.container // false' infra/config/repo.json 2>/dev/null || echo false)"
+          if [ -f infra/docker/ci.dockerfile ] && [ "$container" = "true" ]; then
             echo "present=yes" >> "$GITHUB_OUTPUT"
           else
             echo "present=no" >> "$GITHUB_OUTPUT"

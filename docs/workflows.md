@@ -58,7 +58,7 @@ configuration.
 
 `event-ci.yml` chooses the first available option:
 
-1. `infra/docker/ci.dockerfile` builds and runs the script inside the image;
+1. `infra/docker/ci.dockerfile` builds and runs the script inside the image, but only when `infra/config/repo.json` sets `.ci.container` to `true`;
 2. `scripts/test.sh` runs directly;
 3. `infra/config/repo.json` `.ci.command` runs;
 4. otherwise the job fails with a clear message.
