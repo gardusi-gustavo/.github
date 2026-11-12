@@ -1,0 +1,48 @@
+name: event-release
+
+on:
+  workflow_call:
+    inputs:
+      script:
+        description: Repository-specific release entrypoint
+        type: string
+        default: "scripts/release.sh"
+      artifacts:
+        description: Files attached to the GitHub release
+        type: string
+        default: "dist/*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build release
+        run: |
+          set -euo pipefail
+          if [ -x "${{ inputs.script }}" ]; then
+            bash "${{ inputs.script }}"
+          else
+            mkdir -p dist
+            name="${GITHUB_REPOSITORY##*/}"
+            git archive --format=zip \
+              --output "dist/${name}-${GITHUB_REF_NAME}.zip" HEAD
+            ( cd dist && sha256sum ./*.zip > SHA256SUMS )
+          fi
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" ${{ inputs.artifacts }} --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" ${{ inputs.artifacts }} --generate-notes
+          fi
