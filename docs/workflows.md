@@ -54,6 +54,14 @@ infra/config/repo.json             language, release type, commands
 Removed: per-repository copies of CI, backup, deploy, agent, and Dependabot
 configuration.
 
+## Language setup
+
+`event-ci.yml` infers the language from the repository name (`package-<lang>`) or
+`infra/config/repo.json` `.ci.language`, then installs the toolchain: Python,
+Node, Go, Rust, Java/Kotlin/Scala, .NET, Ruby, PHP, Elixir, Lua, Swift, Zig, or
+Terraform. C++ and shell need no extra setup. A repository can override anything
+with `scripts/setup.sh`.
+
 ## Resolution order
 
 `event-ci.yml` chooses the first available option:
