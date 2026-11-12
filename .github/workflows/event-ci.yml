@@ -40,11 +40,15 @@ jobs:
         run: |
           set -euo pipefail
           if [ -x "${{ inputs.script }}" ]; then
-            docker run --rm -v "$PWD:/work" -w /work ci bash -lc "bash ${{ inputs.script }}"
+            command="bash ${{ inputs.script }}"
           else
-            echo "container present but ${{ inputs.script }} is missing"
+            command="$(jq -r '.ci.command // .ci.script // empty' infra/config/repo.json 2>/dev/null || true)"
+          fi
+          if [ -z "$command" ]; then
+            echo "container present but neither ${{ inputs.script }} nor a ci command exists"
             exit 1
           fi
+          docker run --rm -v "$PWD:/work" -w /work ci bash -lc "$command"
 
       - name: Test from script
         if: steps.container.outputs.present == 'no' && hashFiles(inputs.script) != ''
