@@ -54,7 +54,7 @@ jobs:
         if: steps.container.outputs.present == 'no' && hashFiles(inputs.script) == ''
         run: |
           set -euo pipefail
-          command="$(jq -r '.ci.command // empty' infra/config/repo.json 2>/dev/null || true)"
+          command="$(jq -r '.ci.command // .ci.script // empty' infra/config/repo.json 2>/dev/null || true)"
           if [ -z "$command" ]; then
             echo "no ${{ inputs.script }} and no .ci.command in infra/config/repo.json"
             exit 1

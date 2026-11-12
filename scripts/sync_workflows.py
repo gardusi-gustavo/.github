@@ -51,12 +51,15 @@ def load_registry() -> dict:
     return json.loads(REGISTRY.read_text(encoding="utf-8"))
 
 
-def repos(reg: dict) -> list[tuple[str, str, pathlib.Path]]:
+def repos(reg: dict, only: list[str] | None = None) -> list[tuple[str, str, pathlib.Path]]:
     """Return (repo slug, domain, local path) for every registered repository."""
     found = []
     for domain in reg.get("domains", []):
         for repo in domain.get("repos", []):
             path = pathlib.Path(repo["path"])
+            name = repo["github"].split("/")[-1]
+            if only and name not in only:
+                continue
             if path.is_dir() and repo["github"] not in EXCLUDE:
                 found.append((repo["github"], domain["config_dir"], path))
     return found
@@ -76,10 +79,10 @@ def state(template: bytes, path: pathlib.Path) -> tuple[str, str]:
     return "drift", digest(current)
 
 
-def check(reg: dict, as_json: bool) -> int:
+def check(reg: dict, as_json: bool, only: list[str]) -> int:
     template = TEMPLATE.read_bytes()
     rows = []
-    for slug, _domain, path in repos(reg):
+    for slug, _domain, path in repos(reg, only):
         status, current = state(template, path)
         rows.append({"repo": slug, "state": status, "target": current, "wanted": digest(template)})
     if as_json:
@@ -129,9 +132,9 @@ def apply_one(slug: str, config_dir: str, path: pathlib.Path, template: bytes, y
     return pr.stdout.strip().splitlines()[-1]
 
 
-def apply(reg: dict, yes: bool) -> int:
+def apply(reg: dict, yes: bool, only: list[str]) -> int:
     template = TEMPLATE.read_bytes()
-    for slug, config_dir, path in repos(reg):
+    for slug, config_dir, path in repos(reg, only):
         try:
             print(f"{slug:55} {apply_one(slug, config_dir, path, template, yes)}")
         except Exception as exc:
@@ -146,12 +149,13 @@ def main() -> int:
     group.add_argument("--apply", action="store_true", help="write the pointer and open pull requests")
     parser.add_argument("--json", action="store_true", help="machine-readable output for --check")
     parser.add_argument("--yes", action="store_true", help="confirm --apply")
+    parser.add_argument("--repo", action="append", default=[], help="limit to these repository names")
     args = parser.parse_args()
 
     reg = load_registry()
     if args.check:
-        return check(reg, args.json)
-    return apply(reg, args.yes)
+        return check(reg, args.json, args.repo)
+    return apply(reg, args.yes, args.repo)
 
 
 if __name__ == "__main__":
