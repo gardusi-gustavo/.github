@@ -23,7 +23,8 @@ jobs:
       - name: Check reusable workflow triggers
         run: |
           set -euo pipefail
-          for f in .github/workflows/reusable-*.yml; do
+          shopt -s nullglob
+          for f in .github/workflows/reusable-*.yml .github/workflows/event-*.yml; do
             grep -q 'workflow_call:' "$f" || { echo "$f is missing workflow_call"; exit 1; }
           done
           echo 'reusable workflows ok'

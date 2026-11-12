@@ -1,0 +1,62 @@
+name: event-ci
+
+on:
+  workflow_call:
+    inputs:
+      script:
+        description: Repository-specific test entrypoint
+        type: string
+        default: "scripts/test.sh"
+      timeout:
+        description: Job timeout in minutes
+        type: number
+        default: 20
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect container
+        id: container
+        run: |
+          if [ -f infra/docker/ci.dockerfile ]; then
+            echo "present=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=no" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build CI image
+        if: steps.container.outputs.present == 'yes'
+        run: docker build -f infra/docker/ci.dockerfile -t ci .
+
+      - name: Test in container
+        if: steps.container.outputs.present == 'yes'
+        run: |
+          set -euo pipefail
+          if [ -x "${{ inputs.script }}" ]; then
+            docker run --rm -v "$PWD:/work" -w /work ci bash -lc "bash ${{ inputs.script }}"
+          else
+            echo "container present but ${{ inputs.script }} is missing"
+            exit 1
+          fi
+
+      - name: Test from script
+        if: steps.container.outputs.present == 'no' && hashFiles(inputs.script) != ''
+        run: bash "${{ inputs.script }}"
+
+      - name: Test from repository config
+        if: steps.container.outputs.present == 'no' && hashFiles(inputs.script) == ''
+        run: |
+          set -euo pipefail
+          command="$(jq -r '.ci.command // empty' infra/config/repo.json 2>/dev/null || true)"
+          if [ -z "$command" ]; then
+            echo "no ${{ inputs.script }} and no .ci.command in infra/config/repo.json"
+            exit 1
+          fi
+          bash -lc "$command"
