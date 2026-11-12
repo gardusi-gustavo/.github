@@ -132,6 +132,10 @@ jobs:
         with:
           luaVersion: "5.4"
 
+      - name: Setup LuaRocks
+        if: steps.container.outputs.present == 'no' && steps.config.outputs.language == 'lua'
+        uses: leafo/gh-actions-luarocks@v4
+
       - name: Setup Swift
         if: steps.container.outputs.present == 'no' && steps.config.outputs.language == 'swift'
         uses: swift-actions/setup-swift@v3
