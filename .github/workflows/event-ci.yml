@@ -48,7 +48,7 @@ jobs:
             echo "container present but neither ${{ inputs.script }} nor a ci command exists"
             exit 1
           fi
-          docker run --rm -v "$PWD:/work" -w /work ci bash -lc "$command"
+          docker run --rm -v "$PWD:/work" -w /work ci bash -lc "git config --global --add safe.directory /work && $command"
 
       - name: Test from script
         if: steps.container.outputs.present == 'no' && hashFiles(inputs.script) != ''
