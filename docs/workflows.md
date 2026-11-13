@@ -83,7 +83,6 @@ Everything else lives in `package-yml` and is inert:
 .github/workflows/experimental-backup.yml
 .github/workflows/experimental-ingest.yml
 .github/workflows/experimental-pages.yml
-.github/workflows/experimental-agent.yml
 ```
 
 All are `workflow_call`; none fires on its own. Manual dispatch is the test, and

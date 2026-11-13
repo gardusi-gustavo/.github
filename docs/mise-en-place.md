@@ -27,7 +27,6 @@ They live in `package-yml` only:
 .github/workflows/experimental-backup.yml
 .github/workflows/experimental-ingest.yml
 .github/workflows/experimental-pages.yml
-.github/workflows/experimental-agent.yml
 ```
 
 All are `workflow_call`; none has a schedule or fires on its own.
