@@ -7,47 +7,44 @@ scheduled runs yet.
 
 | File | Status | Notes |
 | --- | --- | --- |
-| `.github/workflows/pipeline.yml` | done in 40 repos | PR CI + tag release |
+| `.github/workflows/pr.yml` | done in 40 repos | pull-request CI |
+| `.github/workflows/release.yml` | done in 40 repos | tag release |
 | `.github/CONTRIBUTING.md` | done in 39 | from `package-md` |
 | `.github/SECURITY.md` | done in 39 | from `package-md` |
 | `.github/CODE_OF_CONDUCT.md` | done in 39 | from `package-md` |
-| `.github/workflows/update.yml` | **not yet** | dispatch-only, no schedule |
 | `scripts/test.sh` or `infra/config/repo.json` | per repo | CI entrypoint |
 | `infra/docker/ci.dockerfile` | optional | opt-in via `ci.container` |
 
-## Update caller
+No `pipeline.yml` remains after the split.
 
-When a repository is ready for self-update, add `update.yml` from
-`templates/callers/update.yml`. It is `workflow_dispatch` only.
+## Experimental workflows
 
-Do **not** add `schedule:` until the janitor, backup, and ingest checks are ready.
-Enabling a schedule is a separate, deliberate step.
+They live in `package-yml` only:
+
+```text
+.github/workflows/experimental-update.yml   pull-based caller sync
+.github/workflows/reusable-backup.yml
+.github/workflows/reusable-ingest.yml
+.github/workflows/reusable-pages.yml
+.github/workflows/reusable-agent.yml
+```
+
+All are `workflow_call`; none has a schedule or fires on its own.
+
+The caller for a future self-update is `templates/experimental/update.yml`. It is
+not distributed.
 
 ## Order
 
-1. Pointer and community files (mostly done).
+1. Two callers (`pr.yml`, `release.yml`) and community files (mostly done).
 2. Test entrypoint (`scripts/test.sh` or `.ci.script`).
-3. `update.yml` caller, dispatch-only.
-4. Verify one manual dispatch creates a PR in the same repo and CI runs.
-5. Add schedules one class at a time: janitor, then backup, then ingest.
+3. Validate one experimental workflow with a manual dispatch.
+4. Only then add a `schedule:` to one class at a time.
+5. Track the propagation in a single issue in `package-yml`.
 
 ## Rules
 
-- Never add a scheduled trigger before the reusable workflow has been tested with
-  a manual dispatch.
-- One PR per repository.
+- Consumer repositories run only `pr.yml` and `release.yml`.
+- No `schedule`, `issue_comment`, `repository_dispatch`, or `push: branches` in a consumer.
 - The bot prepares a branch and a PR; a human reviews and merges.
 - No PAT, no cross-repo token.
-
-## Enabling later
-
-A scheduled caller is the same file with one extra trigger:
-
-```yaml
-on:
-  workflow_dispatch:
-  schedule:
-    - cron: "41 3 * * 1"
-```
-
-Nothing else changes.

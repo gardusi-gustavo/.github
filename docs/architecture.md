@@ -44,17 +44,16 @@ Consequences:
 package-yml/release/v1
         │  raw fetch, public, no auth
         ▼
-repo update.yml (workflow_dispatch, no schedule)
-        │  compare pointer, branch, commit, push
+repo experimental update (workflow_dispatch, not enabled)
+        │  compare pr/release callers, branch, commit, push
         ▼
 pull request in the same repo (GITHUB_TOKEN)
-        │  dispatch pipeline.yml on the branch
         ▼
-ci / ci on the PR
+caller PR in the same repo (human merges)
 ```
 
-The caller is `templates/callers/update.yml`. It has **no `schedule:`**; it only runs
-when a human dispatches it. Adding the schedule later is the "enable" step.
+The caller is `templates/experimental/update.yml`. It has **no `schedule:`** and is
+not distributed; it only runs when a human dispatches it.
 
 ## Central repositories
 
@@ -69,7 +68,7 @@ when a human dispatches it. Adding the schedule later is the "enable" step.
 
 | Item | Count |
 | --- | ---: |
-| Repos with the `pipeline.yml` pointer | 40 |
+| Repos with the `pr.yml` + `release.yml` pointer | 40 |
 | Repos with local community files | 39 |
 | Repos with `dependabot.yml` | 41 |
 | Repos with `backup.yml` | 38 |

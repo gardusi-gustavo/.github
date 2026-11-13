@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
-"""Check or apply the workflow pointer in every repository.
+"""Check or apply the two caller workflows in every repository.
 
-The pointer is ``.github/workflows/pipeline.yml``. It is byte-identical in every
-repository and only calls reusable workflows from ``gardusi-gustavo/.github``.
-Logic changes never touch it; only an interface change does.
+Every consumer repository carries exactly:
+
+    .github/workflows/pr.yml       pull_request
+    .github/workflows/release.yml  push tags
+
+Both are byte-identical to ``templates/callers``. Logic lives in this repository.
 
 Usage:
 
     sync_workflows.py --check
     sync_workflows.py --check --json
     sync_workflows.py --apply --yes
+    sync_workflows.py --apply --yes --repo package-go
 """
 from __future__ import annotations
 
@@ -21,29 +25,19 @@ import pathlib
 import subprocess
 import sys
 
-def _gh_home() -> pathlib.Path:
-    env = os.environ.get("GH_HOME")
-    if env:
-        return pathlib.Path(env)
-    candidates = [
-        pathlib.Path.home() / ".config" / "gh",
-        pathlib.Path("/data/data/com.termux/files/home/.config/gh"),
-    ]
-    for candidate in candidates:
-        if (candidate / "registry.json").exists():
-            return candidate
-    return candidates[0]
-
-
-GH_HOME = _gh_home()
+GH_HOME = pathlib.Path(os.environ.get("GH_HOME", pathlib.Path.home() / ".config" / "gh"))
 REGISTRY = pathlib.Path(os.environ.get("WORKSPACE_GH_REGISTRY", GH_HOME / "registry.json"))
-WORKSPACE = pathlib.Path(os.environ.get("WORKSPACE_ROOT", pathlib.Path.home() / "github"))
-TEMPLATE = pathlib.Path(__file__).resolve().parents[1] / "templates" / "callers" / "pipeline.yml"
-TARGET = pathlib.Path(".github/workflows/pipeline.yml")
-BRANCH = "workflow/pipeline"
+TEMPLATES = pathlib.Path(__file__).resolve().parents[1] / "templates" / "callers"
+TARGETS = {
+    "pr.yml": pathlib.Path(".github/workflows/pr.yml"),
+    "release.yml": pathlib.Path(".github/workflows/release.yml"),
+}
+LEGACY = pathlib.Path(".github/workflows/pipeline.yml")
+BRANCH = "workflow/callers"
 EXCLUDE = {
-    "gardusi-gustavo/.github",          # source of truth
-    "gardusi-gustavo/gardusi-gustavo",  # profile and docs
+    "gardusi-gustavo/package-yml",
+    "gardusi-gustavo/gardusi-gustavo",
+    "gardusi-gustavo/contract-wit",
 }
 
 
@@ -51,48 +45,37 @@ def load_registry() -> dict:
     return json.loads(REGISTRY.read_text(encoding="utf-8"))
 
 
-def repos(reg: dict, only: list[str] | None = None) -> list[tuple[str, str, pathlib.Path]]:
-    """Return (repo slug, domain, local path) for every registered repository."""
-    found = []
+def repos(reg: dict, only: list[str] | None = None):
     for domain in reg.get("domains", []):
         for repo in domain.get("repos", []):
-            path = pathlib.Path(repo["path"])
             name = repo["github"].split("/")[-1]
             if only and name not in only:
                 continue
-            if path.is_dir() and repo["github"] not in EXCLUDE:
-                found.append((repo["github"], domain["config_dir"], path))
-    return found
+            if repo["github"] in EXCLUDE:
+                continue
+            path = pathlib.Path(repo["path"])
+            if path.is_dir():
+                yield repo["github"], domain["config_dir"], path
 
 
 def digest(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()[:12]
 
 
-def state(template: bytes, path: pathlib.Path) -> tuple[str, str]:
-    target = path / TARGET
-    if not target.exists():
-        return "missing", "-"
-    current = target.read_bytes()
-    if current == template:
-        return "ok", digest(current)
-    return "drift", digest(current)
+def state(path: pathlib.Path) -> tuple[str, list[str]]:
+    drifted = []
+    for name, target in TARGETS.items():
+        wanted = (TEMPLATES / name).read_bytes()
+        file = path / target
+        if not file.exists() or file.read_bytes() != wanted:
+            drifted.append(name)
+    if (path / LEGACY).exists():
+        drifted.append("pipeline.yml")
+    return ("ok" if not drifted else "drift"), drifted
 
 
-def check(reg: dict, as_json: bool, only: list[str]) -> int:
-    template = TEMPLATE.read_bytes()
-    rows = []
-    for slug, _domain, path in repos(reg, only):
-        status, current = state(template, path)
-        rows.append({"repo": slug, "state": status, "target": current, "wanted": digest(template)})
-    if as_json:
-        print(json.dumps(rows, indent=2))
-    else:
-        for row in rows:
-            print(f"{row['repo']:55} {row['state']:8} {row['target']}/{row['wanted']}")
-        drifted = sum(1 for row in rows if row["state"] != "ok")
-        print(f"\n{len(rows)} repositories, {drifted} need the pointer")
-    return 0
+def run(args: list[str], cwd: pathlib.Path) -> subprocess.CompletedProcess:
+    return subprocess.run(args, cwd=cwd, text=True, capture_output=True, timeout=300)
 
 
 def gh(args: list[str], config_dir: str) -> subprocess.CompletedProcess:
@@ -100,43 +83,58 @@ def gh(args: list[str], config_dir: str) -> subprocess.CompletedProcess:
     return subprocess.run(["gh", *args], text=True, env=env, capture_output=True, timeout=180)
 
 
-def run(args: list[str], cwd: pathlib.Path) -> subprocess.CompletedProcess:
-    return subprocess.run(args, cwd=cwd, text=True, capture_output=True, timeout=300)
+def check(reg: dict, only: list[str], as_json: bool) -> int:
+    rows = []
+    for slug, _cfg, path in repos(reg, only):
+        status, drifted = state(path)
+        rows.append({"repo": slug, "state": status, "files": drifted})
+    if as_json:
+        print(json.dumps(rows, indent=2))
+    else:
+        for row in rows:
+            print(f"{row['repo']:55} {row['state']:6} {','.join(row['files'])}")
+        print(f"\n{len(rows)} repositories, {sum(r['state'] != 'ok' for r in rows)} need callers")
+    return 0
 
 
-def apply_one(slug: str, config_dir: str, path: pathlib.Path, template: bytes, yes: bool) -> str:
-    status, _ = state(template, path)
+def apply_one(slug: str, cfg: str, path: pathlib.Path, yes: bool) -> str:
+    status, drifted = state(path)
     if status == "ok":
         return "ok"
-    target = path / TARGET
-    target.parent.mkdir(parents=True, exist_ok=True)
     if not yes:
-        print(f"[dry-run] {slug}: would write {TARGET} and open a pull request")
+        print(f"[dry-run] {slug}: would write {', '.join(drifted)}")
         return "planned"
+    run(["git", "fetch", "-q", "origin"], path)
+    run(["git", "checkout", "-q", "main"], path)
+    run(["git", "pull", "-q", "--ff-only"], path)
     run(["git", "checkout", "-B", BRANCH], path)
-    target.write_bytes(template)
-    run(["git", "add", str(TARGET)], path)
-    commit = run(["git", "commit", "-m", "workflows: add the shared pipeline pointer"], path)
+    if (path / LEGACY).exists():
+        run(["git", "rm", "-q", str(LEGACY)], path)
+    for name, target in TARGETS.items():
+        file = path / target
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.write_bytes((TEMPLATES / name).read_bytes())
+        run(["git", "add", str(target)], path)
+    commit = run(["git", "commit", "-m", "workflows: split PR and tag callers"], path)
     if commit.returncode != 0:
-        return f"commit failed: {commit.stderr.strip()[:80]}"
+        return "commit failed"
     push = run(["git", "push", "git@github.com:" + slug + ".git", f"HEAD:refs/heads/{BRANCH}"], path)
     if push.returncode != 0:
-        return f"push failed: {push.stderr.strip()[:120]}"
+        return f"push failed: {push.stderr.strip()[:60]}"
     pr = gh(["pr", "create", "--repo", slug, "--base", "main", "--head", BRANCH,
-             "--title", "workflows: add the shared pipeline pointer",
-             "--body", "Adds the byte-identical pointer to the reusable CI and release "
-                       "workflows in gardusi-gustavo/.github.\n\nLogic lives in .github; "
-                       "this file only defines the triggers."], config_dir)
+             "--title", "workflows: split PR and tag callers",
+             "--body", "Replaces the combined pipeline with two callers from "
+                       "gardusi-gustavo/package-yml: pr.yml (pull_request) and "
+                       "release.yml (push tags)."], cfg)
     if pr.returncode != 0:
-        return f"pr failed: {pr.stderr.strip()[:120]}"
+        return f"pr failed: {pr.stderr.strip()[:60]}"
     return pr.stdout.strip().splitlines()[-1]
 
 
-def apply(reg: dict, yes: bool, only: list[str]) -> int:
-    template = TEMPLATE.read_bytes()
-    for slug, config_dir, path in repos(reg, only):
+def apply(reg: dict, only: list[str], yes: bool) -> int:
+    for slug, cfg, path in repos(reg, only):
         try:
-            print(f"{slug:55} {apply_one(slug, config_dir, path, template, yes)}")
+            print(f"{slug:55} {apply_one(slug, cfg, path, yes)}")
         except Exception as exc:
             print(f"{slug:55} error: {exc}")
     return 0
@@ -145,17 +143,16 @@ def apply(reg: dict, yes: bool, only: list[str]) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(prog="sync_workflows.py", description=__doc__)
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--check", action="store_true", help="report drift only")
-    group.add_argument("--apply", action="store_true", help="write the pointer and open pull requests")
-    parser.add_argument("--json", action="store_true", help="machine-readable output for --check")
-    parser.add_argument("--yes", action="store_true", help="confirm --apply")
-    parser.add_argument("--repo", action="append", default=[], help="limit to these repository names")
+    group.add_argument("--check", action="store_true")
+    group.add_argument("--apply", action="store_true")
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--yes", action="store_true")
+    parser.add_argument("--repo", action="append", default=[])
     args = parser.parse_args()
-
     reg = load_registry()
     if args.check:
-        return check(reg, args.json, args.repo)
-    return apply(reg, args.yes, args.repo)
+        return check(reg, args.repo, args.json)
+    return apply(reg, args.repo, args.yes)
 
 
 if __name__ == "__main__":

@@ -12,4 +12,4 @@ permissions:
 
 jobs:
   update:
-    uses: gardusi-gustavo/package-yml/.github/workflows/scheduled-update.yml@release/v1
+    uses: gardusi-gustavo/package-yml/.github/workflows/experimental-update.yml@release/v1

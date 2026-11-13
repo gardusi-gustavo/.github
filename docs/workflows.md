@@ -1,58 +1,79 @@
 # Workflows
 
-GitHub Actions are split in two, because GitHub only fires an event inside the
-repository where it happens.
+Every consumer repository runs exactly two workflows, both imported from
+`gardusi-gustavo/package-yml`.
 
 | Kind | Lives in | Replicated per repo |
 | --- | --- | --- |
-| Event logic | this repository, `event-*.yml` | no |
-| Event trigger | each repository, `.github/workflows/pipeline.yml` | yes, byte-identical |
-| Scheduled logic and trigger | this repository, `scheduled-*.yml` | no |
-| Custom algorithm | each repository, `scripts/` and `infra/docker/` | yes |
+| Event logic | `package-yml`, `event-*.yml` | no |
+| Event triggers | each repo, `pr.yml` and `release.yml` | yes, byte-identical |
+| Experimental logic | `package-yml`, `experimental-*.yml` | no |
+| Repository code | each repo, `scripts/` and `infra/docker/` | yes |
 
-## The pointer
+## The two callers
 
-Every repository contains exactly one workflow file:
+**`pr.yml`** — every pull request:
 
 ```yaml
-name: pipeline
+name: pr
 on:
   pull_request:
     branches: [main]
-  push:
-    tags: ["v*"]
+permissions:
+  contents: read
 jobs:
-  pr:
-    if: github.event_name == 'pull_request'
-    uses: gardusi-gustavo/.github/.github/workflows/event-ci.yml@release/v1
-  release:
-    if: github.event_name == 'push'
-    permissions:
-      contents: write
-    uses: gardusi-gustavo/.github/.github/workflows/event-release.yml@release/v1
+  ci:
+    uses: gardusi-gustavo/package-yml/.github/workflows/event-ci.yml@release/v1
 ```
 
-It is a constant. Logic changes in `event-ci.yml` or `event-release.yml` reach
-every repository without a pull request, because the pointer references the
-`release/v1` branch.
+**`release.yml`** — every tag:
 
-The pointer changes only when the interface changes: a new trigger, a new input,
-a new secret. That is expected during the first weeks and close to never once
-stable.
+```yaml
+name: release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  release:
+    uses: gardusi-gustavo/package-yml/.github/workflows/event-release.yml@release/v1
+```
+
+There is no combined `pipeline.yml`. No `schedule`, `issue_comment`,
+`repository_dispatch`, or `push: branches` trigger belongs in a consumer
+repository.
+
+Logic changes in `event-ci.yml` / `event-release.yml` reach every repository
+without a pull request because the callers reference `release/v1`. The callers
+change only when the interface changes.
 
 ## Repository surface
 
 ```text
-.github/workflows/pipeline.yml     pointer, identical everywhere
-scripts/test.sh                    optional
-scripts/release.sh                 optional
-scripts/ingest.sh                  optional
-infra/docker/ci.dockerfile         optional
-infra/config/repo.json             language, release type, commands
+.github/workflows/pr.yml        pull request CI
+.github/workflows/release.yml   tag release
+scripts/test.sh                 optional
+scripts/release.sh              optional
+infra/docker/ci.dockerfile      optional, opt-in via ci.container
+infra/config/repo.json          language, release type, commands
 ```
 
-Removed: per-repository copies of CI, backup, deploy, agent, and Dependabot
-configuration.
+## Experimental workflows
+
+Everything that is not PR or tag lives in this repository and is **not enabled**:
+
+```text
+.github/workflows/experimental-update.yml    pull-based caller sync
+.github/workflows/reusable-backup.yml        backup
+.github/workflows/reusable-ingest.yml        ingestion
+.github/workflows/reusable-pages.yml         Pages deploy
+.github/workflows/reusable-agent.yml         comment commands
+```
+
+They are `workflow_call` only, so they never fire on their own. A manual dispatch
+is the test; a schedule is added only after that passes. Propagation to consumers
+is tracked by a single issue in this repository.
 
 ## Language setup
 
@@ -66,35 +87,20 @@ with `scripts/setup.sh`.
 
 `event-ci.yml` chooses the first available option:
 
-1. `infra/docker/ci.dockerfile` builds and runs the script inside the image, but only when `infra/config/repo.json` sets `.ci.container` to `true`;
+1. `infra/docker/ci.dockerfile` builds and runs the script inside the image, but
+   only when `infra/config/repo.json` sets `.ci.container` to `true`;
 2. `scripts/test.sh` runs directly;
-3. `infra/config/repo.json` `.ci.command` runs;
+3. `infra/config/repo.json` `.ci.command` or `.ci.script` runs;
 4. otherwise the job fails with a clear message.
 
 `event-release.yml` uses `scripts/release.sh` when present; otherwise it archives
 the tag and publishes a GitHub release from `dist/*`.
 
-The most frequently edited files are therefore the script and the Dockerfile,
-not the workflow.
-
-## Scheduled workflows
-
-Scheduled work has no per-repository replica. It runs here:
-
-```text
-.github/workflows/scheduled-backup.yml
-.github/workflows/scheduled-ingest-hourly.yml
-.github/workflows/scheduled-ingest-daily.yml
-```
-
-A scheduled workflow that writes to another repository needs a cross-repository
-credential; the built-in `GITHUB_TOKEN` is scoped to this repository only.
-
 ## Ref strategy
 
 | Ref | Consumer pull requests on logic change | Use |
 | --- | --- | --- |
-| `release/v1` branch | none | event logic, current default |
+| `release/v1` branch | none | current default |
 | `v1.x.y` tag | one wave per release | strict freeze |
 | commit SHA | one wave per bump | maximum assurance |
 
@@ -109,31 +115,16 @@ python3 scripts/sync_workflows.py --check --json
 python3 scripts/sync_workflows.py --apply --yes
 ```
 
-`--check` compares the pointer hash in every repository with
-`templates/callers/pipeline.yml`. Expected steady state: every repository reports
-`ok`. A drift report means someone edited the pointer by hand or a repository
-missed the bootstrap wave.
+`--check` compares `pr.yml` and `release.yml` in every repository with
+`templates/callers/`. It also reports a leftover `pipeline.yml`. Expected steady
+state: every repository reports `ok`.
 
-`--apply` writes the pointer, pushes a `workflow/pipeline` branch over SSH, and
-opens a pull request. It is idempotent: repositories already matching are skipped.
+`--apply` writes the callers, removes `pipeline.yml`, pushes a `workflow/callers`
+branch over SSH, and opens a pull request. It is idempotent.
 
 ## Rules
 
-- Never edit `pipeline.yml` by hand; change the template or run the sync.
+- Never edit `pr.yml` or `release.yml` by hand; change the template or run the sync.
 - Never copy reusable logic into a repository.
-- Workflow bumps belong to the `source:workflow` lane and do not count against
-  the builder's one-pull-request limit.
+- Scheduled and experimental workflows stay here until validated.
 - The builder may not modify `.github/workflows/**`.
-
-
-## Mise en place: no schedules yet
-
-The current phase prepares every repository without enabling recurring work.
-
-- `pipeline.yml` (PR + tag) is the only workflow that runs.
-- `update.yml` is `workflow_dispatch` only; no `schedule:`.
-- The reusable `scheduled-update.yml` opens a PR in the calling repository with
-  its own `GITHUB_TOKEN` and dispatches CI on the branch. No PAT is involved.
-
-Enabling a scheduled workflow is a separate step: add the `schedule:` trigger to
-the caller after a manual dispatch has been verified.

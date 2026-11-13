@@ -1,0 +1,61 @@
+name: scheduled-update
+
+# Pull-based caller update. The caller runs inside its own repository, so the
+# built-in GITHUB_TOKEN can push a branch and open a pull request there.
+# No PAT and no cross-repository write.
+on:
+  workflow_call:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare with the canonical callers
+        id: compare
+        run: |
+          set -euo pipefail
+          changed=0
+          for pair in "pr.yml:.github/workflows/pr.yml" "release.yml:.github/workflows/release.yml"; do
+            source="${pair%%:*}"
+            target="${pair#*:}"
+            url="https://raw.githubusercontent.com/gardusi-gustavo/package-yml/release/v1/templates/callers/${source}"
+            curl -fsSL "$url" -o "/tmp/${source}"
+            if ! cmp -s "/tmp/${source}" "$target" 2>/dev/null; then
+              mkdir -p "$(dirname "$target")"
+              cp "/tmp/${source}" "$target"
+              changed=1
+            fi
+          done
+          if [ -f .github/workflows/pipeline.yml ]; then
+            rm .github/workflows/pipeline.yml
+            changed=1
+          fi
+          echo "changed=${changed}" >> "$GITHUB_OUTPUT"
+
+      - name: Open pull request in this repository
+        if: steps.compare.outputs.changed == '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          branch="workflow/callers"
+          git checkout -B "$branch"
+          git add .github/workflows
+          git commit -m "workflows: split PR and tag callers"
+          git push -u origin "$branch"
+          if ! gh pr list --repo "$GITHUB_REPOSITORY" --head "$branch" --json number --jq '.[0].number' | grep -q .; then
+            gh pr create \
+              --repo "$GITHUB_REPOSITORY" \
+              --base main \
+              --head "$branch" \
+              --title "workflows: split PR and tag callers" \
+              --body "Pulls pr.yml and release.yml from gardusi-gustavo/package-yml@release/v1 and removes the old pipeline.yml. Opened by the repository's own GITHUB_TOKEN."
+          fi

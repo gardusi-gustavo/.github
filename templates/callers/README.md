@@ -1,17 +1,20 @@
 # Caller templates
 
-Every repository consumes workflows from this repository through a thin caller.
+A repository carries exactly two workflows, both imported from
+`gardusi-gustavo/package-yml`:
 
 | Template | Trigger | Purpose |
 | --- | --- | --- |
-| `pipeline.yml` | `pull_request`, `push: tags` | PR CI and tag release |
-| `update.yml` | `workflow_dispatch` | compare the pointer with this repository and open a PR locally |
+| `pr.yml` | `pull_request: branches: [main]` | CI |
+| `release.yml` | `push: tags: ["v*"]` | build and publish a release |
 
 Rules:
 
-- copy the file as-is; do not add repository-specific logic;
-- `update.yml` has no schedule during mise en place;
-- when enabling a schedule, add only the trigger, nothing else;
+- copy both files as-is; do not add repository-specific logic;
+- there is no combined `pr.yml` + `release.yml`;
+- no `schedule`, `issue_comment`, `repository_dispatch`, or `push: branches`
+  trigger belongs in a consumer repository;
 - repository-specific behaviour belongs in `scripts/` or `infra/docker/`.
 
-The pointer is expected to be identical in every repository. Drift is a bug.
+Experimental callers (update, janitor, backup, ingest) live in
+`templates/experimental/` and are **not** distributed until tested.
