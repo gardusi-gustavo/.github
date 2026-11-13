@@ -1,0 +1,74 @@
+name: scheduled-update
+
+# Pull-based template update. The caller runs this inside its own repository,
+# so the built-in GITHUB_TOKEN can push a branch and open a pull request there.
+# No PAT and no cross-repository write.
+on:
+  workflow_call:
+    inputs:
+      source-repo:
+        type: string
+        default: gardusi-gustavo/package-yml
+      source-ref:
+        type: string
+        default: release/v1
+      source-path:
+        type: string
+        default: templates/callers/pipeline.yml
+      target-path:
+        type: string
+        default: .github/workflows/pipeline.yml
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare with the canonical template
+        id: compare
+        run: |
+          set -euo pipefail
+          url="https://raw.githubusercontent.com/${{ inputs.source-repo }}/${{ inputs.source-ref }}/${{ inputs.source-path }}"
+          curl -fsSL "$url" -o /tmp/canonical.yml
+          if cmp -s /tmp/canonical.yml "${{ inputs.target-path }}"; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "already up to date"
+          else
+            cp /tmp/canonical.yml "${{ inputs.target-path }}"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open pull request in this repository
+        if: steps.compare.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          branch="workflow/update"
+          git checkout -B "$branch"
+          git add "${{ inputs.target-path }}"
+          git commit -m "workflows: update the shared pipeline pointer"
+          git push -u origin "$branch"
+          if ! gh pr list --repo "$GITHUB_REPOSITORY" --head "$branch" --json number --jq '.[0].number' | grep -q .; then
+            gh pr create \
+              --repo "$GITHUB_REPOSITORY" \
+              --base main \
+              --head "$branch" \
+              --title "workflows: update the shared pipeline pointer" \
+              --body "Pulls the canonical caller from ${{ inputs.source-repo }}@${{ inputs.source-ref }}. Opened by the repository's own GITHUB_TOKEN."
+          fi
+
+      - name: Run CI on the update branch
+        if: steps.compare.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run pipeline.yml --repo "$GITHUB_REPOSITORY" --ref workflow/update

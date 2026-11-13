@@ -124,3 +124,16 @@ opens a pull request. It is idempotent: repositories already matching are skippe
 - Workflow bumps belong to the `source:workflow` lane and do not count against
   the builder's one-pull-request limit.
 - The builder may not modify `.github/workflows/**`.
+
+
+## Mise en place: no schedules yet
+
+The current phase prepares every repository without enabling recurring work.
+
+- `pipeline.yml` (PR + tag) is the only workflow that runs.
+- `update.yml` is `workflow_dispatch` only; no `schedule:`.
+- The reusable `scheduled-update.yml` opens a PR in the calling repository with
+  its own `GITHUB_TOKEN` and dispatches CI on the branch. No PAT is involved.
+
+Enabling a scheduled workflow is a separate step: add the `schedule:` trigger to
+the caller after a manual dispatch has been verified.

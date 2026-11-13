@@ -1,0 +1,15 @@
+name: update
+
+# Mise en place: dispatch only. Add a schedule only after the reusable workflow
+# has been tested manually.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  update:
+    uses: gardusi-gustavo/package-yml/.github/workflows/scheduled-update.yml@release/v1
