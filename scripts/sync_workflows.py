@@ -138,7 +138,7 @@ def apply_one(slug: str, cfg: str, path: pathlib.Path, yes: bool) -> str:
     commit = run(["git", "commit", "-m", "workflows: add event callers"], path)
     if commit.returncode != 0:
         return "commit failed"
-    push = run(["git", "push", "--force-with-lease", "git@github.com:" + slug + ".git", f"HEAD:refs/heads/{BRANCH}"], path)
+    push = run(["git", "push", "--force", "git@github.com:" + slug + ".git", f"HEAD:refs/heads/{BRANCH}"], path)
     if push.returncode != 0:
         return f"push failed: {push.stderr.strip()[:60]}"
     pr = gh(["pr", "create", "--repo", slug, "--base", "main", "--head", BRANCH,
