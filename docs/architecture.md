@@ -68,7 +68,7 @@ not distributed; it only runs when a human dispatches it.
 
 | Item | Count |
 | --- | ---: |
-| Repos with the `pr.yml` + `release.yml` pointer | 40 |
+| Repos with the `event-pull-request.yml` + `event-tag.yml` pointer | 40 |
 | Repos with local community files | 39 |
 | Repos with `dependabot.yml` | 41 |
 | Repos with `backup.yml` | 38 |

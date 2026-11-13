@@ -1,4 +1,4 @@
-name: event-release
+name: event-tag
 
 on:
   workflow_call:

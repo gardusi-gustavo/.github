@@ -41,12 +41,16 @@ def _gh_home() -> pathlib.Path:
 
 GH_HOME = _gh_home()
 REGISTRY = pathlib.Path(os.environ.get("WORKSPACE_GH_REGISTRY", GH_HOME / "registry.json"))
-TEMPLATES = pathlib.Path(__file__).resolve().parents[1] / "templates" / "callers"
+TEMPLATES = pathlib.Path(__file__).resolve().parents[1] / "templates" / "event"
 TARGETS = {
-    "pr.yml": pathlib.Path(".github/workflows/pr.yml"),
-    "release.yml": pathlib.Path(".github/workflows/release.yml"),
+    "pull-request.yml": pathlib.Path(".github/workflows/event-pull-request.yml"),
+    "tag.yml": pathlib.Path(".github/workflows/event-tag.yml"),
 }
-LEGACY = pathlib.Path(".github/workflows/pipeline.yml")
+LEGACY = [
+    pathlib.Path(".github/workflows/pipeline.yml"),
+    pathlib.Path(".github/workflows/pr.yml"),
+    pathlib.Path(".github/workflows/release.yml"),
+]
 BRANCH = "workflow/callers"
 EXCLUDE = {
     "gardusi-gustavo/package-yml",
@@ -83,8 +87,9 @@ def state(path: pathlib.Path) -> tuple[str, list[str]]:
         file = path / target
         if not file.exists() or file.read_bytes() != wanted:
             drifted.append(name)
-    if (path / LEGACY).exists():
-        drifted.append("pipeline.yml")
+    for legacy in LEGACY:
+        if (path / legacy).exists():
+            drifted.append(legacy.name)
     return ("ok" if not drifted else "drift"), drifted
 
 
@@ -122,24 +127,24 @@ def apply_one(slug: str, cfg: str, path: pathlib.Path, yes: bool) -> str:
     run(["git", "checkout", "-q", "main"], path)
     run(["git", "pull", "-q", "--ff-only"], path)
     run(["git", "checkout", "-B", BRANCH], path)
-    if (path / LEGACY).exists():
-        run(["git", "rm", "-q", str(LEGACY)], path)
+    for legacy in LEGACY:
+        if (path / legacy).exists():
+            run(["git", "rm", "-q", str(legacy)], path)
     for name, target in TARGETS.items():
         file = path / target
         file.parent.mkdir(parents=True, exist_ok=True)
         file.write_bytes((TEMPLATES / name).read_bytes())
         run(["git", "add", str(target)], path)
-    commit = run(["git", "commit", "-m", "workflows: split PR and tag callers"], path)
+    commit = run(["git", "commit", "-m", "workflows: add event callers"], path)
     if commit.returncode != 0:
         return "commit failed"
-    push = run(["git", "push", "git@github.com:" + slug + ".git", f"HEAD:refs/heads/{BRANCH}"], path)
+    push = run(["git", "push", "--force-with-lease", "git@github.com:" + slug + ".git", f"HEAD:refs/heads/{BRANCH}"], path)
     if push.returncode != 0:
         return f"push failed: {push.stderr.strip()[:60]}"
     pr = gh(["pr", "create", "--repo", slug, "--base", "main", "--head", BRANCH,
-             "--title", "workflows: split PR and tag callers",
-             "--body", "Replaces the combined pipeline with two callers from "
-                       "gardusi-gustavo/package-yml: pr.yml (pull_request) and "
-                       "release.yml (push tags)."], cfg)
+             "--title", "workflows: add event callers",
+             "--body", "Adds the event callers from gardusi-gustavo/package-yml: "
+                       "event-pull-request.yml (pull_request) and event-tag.yml (push tags)."], cfg)
     if pr.returncode != 0:
         return f"pr failed: {pr.stderr.strip()[:60]}"
     return pr.stdout.strip().splitlines()[-1]

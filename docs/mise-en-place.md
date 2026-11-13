@@ -7,8 +7,8 @@ scheduled runs yet.
 
 | File | Status | Notes |
 | --- | --- | --- |
-| `.github/workflows/pr.yml` | done in 40 repos | pull-request CI |
-| `.github/workflows/release.yml` | done in 40 repos | tag release |
+| `.github/workflows/event-pull-request.yml` | done in 40 repos | pull-request CI |
+| `.github/workflows/event-tag.yml` | done in 40 repos | tag release |
 | `.github/CONTRIBUTING.md` | done in 39 | from `package-md` |
 | `.github/SECURITY.md` | done in 39 | from `package-md` |
 | `.github/CODE_OF_CONDUCT.md` | done in 39 | from `package-md` |
@@ -36,7 +36,7 @@ not distributed.
 
 ## Order
 
-1. Two callers (`pr.yml`, `release.yml`) and community files (mostly done).
+1. Two callers (`event-pull-request.yml`, `event-tag.yml`) and community files (mostly done).
 2. Test entrypoint (`scripts/test.sh` or `.ci.script`).
 3. Validate one experimental workflow with a manual dispatch.
 4. Only then add a `schedule:` to one class at a time.
@@ -44,7 +44,7 @@ not distributed.
 
 ## Rules
 
-- Consumer repositories run only `pr.yml` and `release.yml`.
+- Consumer repositories run only `event-pull-request.yml` and `event-tag.yml`.
 - No `schedule`, `issue_comment`, `repository_dispatch`, or `push: branches` in a consumer.
 - The bot prepares a branch and a PR; a human reviews and merges.
 - No PAT, no cross-repo token.

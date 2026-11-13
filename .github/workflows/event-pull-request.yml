@@ -1,4 +1,4 @@
-name: event-ci
+name: event-pull-request
 
 on:
   workflow_call:

@@ -21,10 +21,10 @@ jobs:
         run: |
           set -euo pipefail
           changed=0
-          for pair in "pr.yml:.github/workflows/pr.yml" "release.yml:.github/workflows/release.yml"; do
+          for pair in "pull-request.yml:.github/workflows/event-pull-request.yml" "tag.yml:.github/workflows/event-tag.yml"; do
             source="${pair%%:*}"
             target="${pair#*:}"
-            url="https://raw.githubusercontent.com/gardusi-gustavo/package-yml/release/v1/templates/callers/${source}"
+            url="https://raw.githubusercontent.com/gardusi-gustavo/package-yml/release/v1/templates/event/${source}"
             curl -fsSL "$url" -o "/tmp/${source}"
             if ! cmp -s "/tmp/${source}" "$target" 2>/dev/null; then
               mkdir -p "$(dirname "$target")"
@@ -32,10 +32,12 @@ jobs:
               changed=1
             fi
           done
-          if [ -f .github/workflows/pipeline.yml ]; then
-            rm .github/workflows/pipeline.yml
-            changed=1
-          fi
+          for legacy in pipeline.yml pr.yml release.yml; do
+            if [ -f ".github/workflows/${legacy}" ]; then
+              rm ".github/workflows/${legacy}"
+              changed=1
+            fi
+          done
           echo "changed=${changed}" >> "$GITHUB_OUTPUT"
 
       - name: Open pull request in this repository
@@ -49,13 +51,13 @@ jobs:
           branch="workflow/callers"
           git checkout -B "$branch"
           git add .github/workflows
-          git commit -m "workflows: split PR and tag callers"
+          git commit -m "workflows: add event callers"
           git push -u origin "$branch"
           if ! gh pr list --repo "$GITHUB_REPOSITORY" --head "$branch" --json number --jq '.[0].number' | grep -q .; then
             gh pr create \
               --repo "$GITHUB_REPOSITORY" \
               --base main \
               --head "$branch" \
-              --title "workflows: split PR and tag callers" \
-              --body "Pulls pr.yml and release.yml from gardusi-gustavo/package-yml@release/v1 and removes the old pipeline.yml. Opened by the repository's own GITHUB_TOKEN."
+              --title "workflows: add event callers" \
+              --body "Pulls event-pull-request.yml and event-tag.yml from gardusi-gustavo/package-yml@release/v1 and removes the old callers. Opened by the repository's own GITHUB_TOKEN."
           fi
