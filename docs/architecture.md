@@ -11,11 +11,10 @@ The current shape of the workspace, as of the mise-en-place phase.
 | `database-*` | 5 | datasets |
 | `dashboard-*` | 5 | static UIs |
 | `game-*` | 3 | interactive products |
-| `workflow-*` | 3 | pipeline-specific repos |
 | meta | 2 | `package-yml`, profile |
 | private | 1 | operator-only, no automation |
 
-Total: 46 active repositories.
+Total: 43 active repositories. The three `workflow-*` repositories are retired; workflow logic lives here.
 
 ## Two workflow classes
 
