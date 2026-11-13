@@ -22,7 +22,7 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
-          for f in .github/workflows/reusable-*.yml .github/workflows/event-*.yml; do
+          for f in .github/workflows/event-*.yml .github/workflows/experimental-*.yml; do
             grep -q 'workflow_call:' "$f" || { echo "$f is missing workflow_call"; exit 1; }
           done
           echo 'reusable workflows ok'

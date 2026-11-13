@@ -80,10 +80,10 @@ Everything else lives in `package-yml` and is inert:
 
 ```text
 .github/workflows/experimental-update.yml
-.github/workflows/reusable-backup.yml
-.github/workflows/reusable-ingest.yml
-.github/workflows/reusable-pages.yml
-.github/workflows/reusable-agent.yml
+.github/workflows/experimental-backup.yml
+.github/workflows/experimental-ingest.yml
+.github/workflows/experimental-pages.yml
+.github/workflows/experimental-agent.yml
 ```
 
 All are `workflow_call`; none fires on its own. Manual dispatch is the test, and

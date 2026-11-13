@@ -24,10 +24,10 @@ They live in `package-yml` only:
 
 ```text
 .github/workflows/experimental-update.yml   pull-based caller sync
-.github/workflows/reusable-backup.yml
-.github/workflows/reusable-ingest.yml
-.github/workflows/reusable-pages.yml
-.github/workflows/reusable-agent.yml
+.github/workflows/experimental-backup.yml
+.github/workflows/experimental-ingest.yml
+.github/workflows/experimental-pages.yml
+.github/workflows/experimental-agent.yml
 ```
 
 All are `workflow_call`; none has a schedule or fires on its own.
