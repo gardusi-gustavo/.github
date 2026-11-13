@@ -25,7 +25,21 @@ import pathlib
 import subprocess
 import sys
 
-GH_HOME = pathlib.Path(os.environ.get("GH_HOME", pathlib.Path.home() / ".config" / "gh"))
+def _gh_home() -> pathlib.Path:
+    env = os.environ.get("GH_HOME")
+    if env:
+        return pathlib.Path(env)
+    candidates = [
+        pathlib.Path.home() / ".config" / "gh",
+        pathlib.Path("/data/data/com.termux/files/home/.config/gh"),
+    ]
+    for candidate in candidates:
+        if (candidate / "registry.json").exists():
+            return candidate
+    return candidates[0]
+
+
+GH_HOME = _gh_home()
 REGISTRY = pathlib.Path(os.environ.get("WORKSPACE_GH_REGISTRY", GH_HOME / "registry.json"))
 TEMPLATES = pathlib.Path(__file__).resolve().parents[1] / "templates" / "callers"
 TARGETS = {
