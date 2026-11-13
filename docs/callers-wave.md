@@ -42,8 +42,5 @@ and removes `pipeline.yml`. Open the pull request from the compare link.
 - [ ] [gardusi-gustavo/package-ui](https://github.com/gardusi-gustavo/package-ui/compare/main...workflow/callers?expand=1)
 - [ ] [gardusi-gustavo/package-wat](https://github.com/gardusi-gustavo/package-wat/compare/main...workflow/callers?expand=1)
 - [ ] [gardusi-gustavo/package-zig](https://github.com/gardusi-gustavo/package-zig/compare/main...workflow/callers?expand=1)
-- [ ] [gardusi-gustavo/workflow-event](https://github.com/gardusi-gustavo/workflow-event/compare/main...workflow/callers?expand=1)
-- [ ] [gardusi-gustavo/workflow-manual](https://github.com/gardusi-gustavo/workflow-manual/compare/main...workflow/callers?expand=1)
-- [ ] [gardusi-gustavo/workflow-scheduled](https://github.com/gardusi-gustavo/workflow-scheduled/compare/main...workflow/callers?expand=1)
 
 No repository should keep `pipeline.yml` after this wave.

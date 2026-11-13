@@ -79,5 +79,5 @@ not distributed; it only runs when a human dispatches it.
 - `contract-sql` and `database-wiki` lack the pointer and community files.
 - Dependabot version-update configs are still present; they should be removed once
   the janitor exists.
-- `workflow-manual` should be archived after its issues move to `workflow-event`.
+- `workflow-event`, `workflow-manual`, and `workflow-scheduled` are retired and should be archived or deleted in the UI after exporting their docs and issues.
 - `release/v1` should be protected in the UI.
