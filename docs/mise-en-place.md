@@ -15,7 +15,8 @@ scheduled runs yet.
 | `scripts/test.sh` or `infra/config/repo.json` | per repo | CI entrypoint |
 | `infra/docker/ci.dockerfile` | optional | opt-in via `ci.container` |
 
-No `pipeline.yml` remains after the split.
+The split and the removal of every non-PR/tag workflow are staged on the
+`workflow/callers` branch of each repository.
 
 ## Experimental workflows
 
