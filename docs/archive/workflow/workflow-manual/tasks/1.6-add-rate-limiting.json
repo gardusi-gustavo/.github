@@ -1,0 +1,18 @@
+{
+  "rank": "1.6",
+  "title": "Add rate limiting",
+  "context": "A user can flood the handler with comments.",
+  "limits": {
+    "max_commits": 5,
+    "max_file_changes": 4
+  },
+  "spec": {
+    "summary": "Add a per-user and per-issue limit.",
+    "expected_outcome": "Excess commands are rejected with a comment.",
+    "acceptance_criteria": [
+      "Limit is configurable",
+      "Limit response is documented"
+    ]
+  },
+  "attempts": []
+}

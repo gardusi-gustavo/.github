@@ -1,0 +1,18 @@
+{
+  "rank": "2.1",
+  "title": "Document the scheduler contract",
+  "context": "Task inputs and outputs need a contract.",
+  "limits": {
+    "max_commits": 5,
+    "max_file_changes": 4
+  },
+  "spec": {
+    "summary": "Document arguments, env vars, and failure semantics.",
+    "expected_outcome": "A new task can be added safely.",
+    "acceptance_criteria": [
+      "Contract is documented",
+      "An example task is provided"
+    ]
+  },
+  "attempts": []
+}

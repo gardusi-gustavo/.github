@@ -1,0 +1,18 @@
+{
+  "rank": "2.2",
+  "title": "Add parser tests",
+  "context": "The parser has no regression suite.",
+  "limits": {
+    "max_commits": 5,
+    "max_file_changes": 4
+  },
+  "spec": {
+    "summary": "Add table-driven parser tests.",
+    "expected_outcome": "Every command form is covered.",
+    "acceptance_criteria": [
+      "Tests run in CI",
+      "Error cases are covered"
+    ]
+  },
+  "attempts": []
+}

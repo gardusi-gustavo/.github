@@ -1,0 +1,18 @@
+{
+  "rank": "1.1",
+  "title": "Validate commenter permission",
+  "context": "An /agent command must only run for trusted collaborators.",
+  "limits": {
+    "max_commits": 5,
+    "max_file_changes": 4
+  },
+  "spec": {
+    "summary": "Check the commenter permission before dispatch.",
+    "expected_outcome": "Bots and read-only users are ignored.",
+    "acceptance_criteria": [
+      "Permission check covers admin/maintain/write",
+      "Bot logins are ignored"
+    ]
+  },
+  "attempts": []
+}

@@ -1,0 +1,18 @@
+{
+  "rank": "1.4",
+  "title": "Schedule the backup job",
+  "context": "Backups need a predictable cadence.",
+  "limits": {
+    "max_commits": 5,
+    "max_file_changes": 4
+  },
+  "spec": {
+    "summary": "Run the bundle backup on a daily schedule.",
+    "expected_outcome": "Backup status is visible.",
+    "acceptance_criteria": [
+      "Schedule is documented",
+      "Status is recorded"
+    ]
+  },
+  "attempts": []
+}

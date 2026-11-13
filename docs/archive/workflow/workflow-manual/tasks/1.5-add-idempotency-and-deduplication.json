@@ -1,0 +1,18 @@
+{
+  "rank": "1.5",
+  "title": "Add idempotency and deduplication",
+  "context": "Repeated comments can dispatch duplicate work.",
+  "limits": {
+    "max_commits": 5,
+    "max_file_changes": 4
+  },
+  "spec": {
+    "summary": "Deduplicate by comment ID and issue.",
+    "expected_outcome": "A repeated command does not run twice.",
+    "acceptance_criteria": [
+      "Duplicate comment is ignored",
+      "Dedup key is documented"
+    ]
+  },
+  "attempts": []
+}

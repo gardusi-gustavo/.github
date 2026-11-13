@@ -1,0 +1,18 @@
+{
+  "rank": "1.2",
+  "title": "Parse agent commands",
+  "context": "The command parser is minimal.",
+  "limits": {
+    "max_commits": 5,
+    "max_file_changes": 4
+  },
+  "spec": {
+    "summary": "Cover command names, arguments, and errors.",
+    "expected_outcome": "Malformed commands fail without dispatch.",
+    "acceptance_criteria": [
+      "Parser handles quoted arguments",
+      "Parser has unit tests"
+    ]
+  },
+  "attempts": []
+}

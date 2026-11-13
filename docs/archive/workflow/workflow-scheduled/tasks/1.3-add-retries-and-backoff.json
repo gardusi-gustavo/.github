@@ -1,0 +1,18 @@
+{
+  "rank": "1.3",
+  "title": "Add retries and backoff",
+  "context": "Provider failures are not bounded.",
+  "limits": {
+    "max_commits": 5,
+    "max_file_changes": 4
+  },
+  "spec": {
+    "summary": "Add retry limits and backoff per task.",
+    "expected_outcome": "Transient failures are retried safely.",
+    "acceptance_criteria": [
+      "Retry limits are tested",
+      "Failures are reported"
+    ]
+  },
+  "attempts": []
+}

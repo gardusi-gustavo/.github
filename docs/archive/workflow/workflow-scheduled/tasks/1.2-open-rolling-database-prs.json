@@ -1,0 +1,18 @@
+{
+  "rank": "1.2",
+  "title": "Open rolling database PRs",
+  "context": "The runner currently dry-runs.",
+  "limits": {
+    "max_commits": 5,
+    "max_file_changes": 4
+  },
+  "spec": {
+    "summary": "Commit each task output to its database branch and open one PR.",
+    "expected_outcome": "A scheduled run produces a reviewable PR.",
+    "acceptance_criteria": [
+      "One PR per domain",
+      "Squash merge policy is respected"
+    ]
+  },
+  "attempts": []
+}

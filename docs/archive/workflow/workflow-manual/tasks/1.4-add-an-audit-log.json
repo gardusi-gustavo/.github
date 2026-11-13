@@ -1,0 +1,18 @@
+{
+  "rank": "1.4",
+  "title": "Add an audit log",
+  "context": "There is no durable record of accepted or rejected commands.",
+  "limits": {
+    "max_commits": 5,
+    "max_file_changes": 4
+  },
+  "spec": {
+    "summary": "Record decision, actor, issue, and command.",
+    "expected_outcome": "Every accepted command is auditable.",
+    "acceptance_criteria": [
+      "Log excludes secrets",
+      "Rejected commands are recorded"
+    ]
+  },
+  "attempts": []
+}

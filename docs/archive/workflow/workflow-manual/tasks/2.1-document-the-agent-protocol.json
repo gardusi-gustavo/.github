@@ -1,0 +1,18 @@
+{
+  "rank": "2.1",
+  "title": "Document the agent protocol",
+  "context": "The protocol is spread across code and docs.",
+  "limits": {
+    "max_commits": 5,
+    "max_file_changes": 4
+  },
+  "spec": {
+    "summary": "Write one protocol page.",
+    "expected_outcome": "Users and operators share one reference.",
+    "acceptance_criteria": [
+      "Commands are listed",
+      "Security boundaries are explicit"
+    ]
+  },
+  "attempts": []
+}

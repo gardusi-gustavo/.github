@@ -1,0 +1,18 @@
+{
+  "rank": "2.2",
+  "title": "Add run telemetry",
+  "context": "Scheduled runs lack a summary.",
+  "limits": {
+    "max_commits": 5,
+    "max_file_changes": 4
+  },
+  "spec": {
+    "summary": "Write sanitized run metrics to database-devops.",
+    "expected_outcome": "The dashboard can show run health.",
+    "acceptance_criteria": [
+      "Only allowlisted fields are written",
+      "Failures are visible"
+    ]
+  },
+  "attempts": []
+}

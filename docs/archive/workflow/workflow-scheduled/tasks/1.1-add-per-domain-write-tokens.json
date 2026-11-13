@@ -1,0 +1,18 @@
+{
+  "rank": "1.1",
+  "title": "Add per-domain write tokens",
+  "context": "The cron runner must not have broad write access.",
+  "limits": {
+    "max_commits": 5,
+    "max_file_changes": 4
+  },
+  "spec": {
+    "summary": "Provision one token per database target.",
+    "expected_outcome": "Each job can write only its own database.",
+    "acceptance_criteria": [
+      "Tokens are scoped",
+      "Cross-domain writes fail"
+    ]
+  },
+  "attempts": []
+}
