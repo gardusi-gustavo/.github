@@ -1,0 +1,195 @@
+name: event-pull-request
+
+on:
+  workflow_call:
+    inputs:
+      script:
+        description: Repository-specific test entrypoint
+        type: string
+        default: "scripts/test.sh"
+      timeout:
+        description: Job timeout in minutes
+        type: number
+        default: 30
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-24.04
+    timeout-minutes: ${{ inputs.timeout }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve language
+        id: config
+        run: |
+          set -euo pipefail
+          repo="${GITHUB_REPOSITORY##*/}"
+          case "$repo" in
+            package-cpp) default=cpp ;;
+            package-cs) default=dotnet ;;
+            package-docker) default=docker ;;
+            package-elixir) default=elixir ;;
+            package-go) default=go ;;
+            package-java) default=java ;;
+            package-kotlin) default=kotlin ;;
+            package-lua) default=lua ;;
+            package-md) default=markdown ;;
+            package-php) default=php ;;
+            package-python) default=python ;;
+            package-rb) default=ruby ;;
+            package-rs) default=rust ;;
+            package-scala) default=scala ;;
+            package-sh) default=shell ;;
+            package-swift) default=swift ;;
+            package-terraform) default=terraform ;;
+            package-ts) default=node ;;
+            package-ui) default=html ;;
+            package-zig) default=zig ;;
+            dashboard-*) default=python ;;
+            database-*) default=python ;;
+            game-*) default=node ;;
+            workflow-*) default=shell ;;
+            *) default=universal ;;
+          esac
+          language="$(jq -r --arg default "$default" '.ci.language // $default' infra/config/repo.json 2>/dev/null || echo "$default")"
+          echo "language=$language" >> "$GITHUB_OUTPUT"
+          echo "resolved language: $language"
+
+      - name: Detect container
+        id: container
+        run: |
+          container="$(jq -r '.ci.container // false' infra/config/repo.json 2>/dev/null || echo false)"
+          if [ -f infra/docker/ci.dockerfile ] && [ "$container" = "true" ]; then
+            echo "present=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=no" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Python
+        if: steps.container.outputs.present == 'no' && steps.config.outputs.language == 'python'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup Node
+        if: steps.container.outputs.present == 'no' && steps.config.outputs.language == 'node'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Go
+        if: steps.container.outputs.present == 'no' && steps.config.outputs.language == 'go'
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Setup Rust
+        if: steps.container.outputs.present == 'no' && steps.config.outputs.language == 'rust'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Java
+        if: >-
+          steps.container.outputs.present == 'no' &&
+          (steps.config.outputs.language == 'java' ||
+           steps.config.outputs.language == 'kotlin' ||
+           steps.config.outputs.language == 'scala')
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Setup .NET
+        if: steps.container.outputs.present == 'no' && steps.config.outputs.language == 'dotnet'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Setup Ruby
+        if: steps.container.outputs.present == 'no' && steps.config.outputs.language == 'ruby'
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - name: Setup PHP
+        if: steps.container.outputs.present == 'no' && steps.config.outputs.language == 'php'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+
+      - name: Setup Elixir
+        if: steps.container.outputs.present == 'no' && steps.config.outputs.language == 'elixir'
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27"
+          elixir-version: "1.18"
+
+      - name: Setup Lua
+        if: steps.container.outputs.present == 'no' && steps.config.outputs.language == 'lua'
+        uses: leafo/gh-actions-lua@v10
+        with:
+          luaVersion: "5.4"
+
+      - name: Setup LuaRocks
+        if: steps.container.outputs.present == 'no' && steps.config.outputs.language == 'lua'
+        uses: leafo/gh-actions-luarocks@v4
+
+      - name: Setup Swift
+        if: steps.container.outputs.present == 'no' && steps.config.outputs.language == 'swift'
+        uses: swift-actions/setup-swift@v3
+        with:
+          swift-version: "6.0"
+          skip-verify-signature: true
+
+      - name: Setup Zig
+        if: steps.container.outputs.present == 'no' && steps.config.outputs.language == 'zig'
+        uses: mlugg/setup-zig@v1
+        with:
+          version: "0.13.0"
+
+      - name: Setup Terraform
+        if: steps.container.outputs.present == 'no' && steps.config.outputs.language == 'terraform'
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+
+      - name: Repository setup
+        if: hashFiles('scripts/setup.sh') != ''
+        run: bash scripts/setup.sh
+
+      - name: Build CI image
+        if: steps.container.outputs.present == 'yes'
+        run: docker build -f infra/docker/ci.dockerfile -t ci .
+
+      - name: Test in container
+        if: steps.container.outputs.present == 'yes'
+        run: |
+          set -euo pipefail
+          if [ -x "${{ inputs.script }}" ]; then
+            command="bash ${{ inputs.script }}"
+          else
+            command="$(jq -r '.ci.command // .ci.script // empty' infra/config/repo.json 2>/dev/null || true)"
+          fi
+          if [ -z "$command" ]; then
+            echo "container present but neither ${{ inputs.script }} nor a ci command exists"
+            exit 1
+          fi
+          docker run --rm -v "$PWD:/work" -w /work ci \
+            bash -lc "git config --global --add safe.directory /work && $command"
+
+      - name: Test from script
+        if: steps.container.outputs.present == 'no' && hashFiles(inputs.script) != ''
+        run: bash "${{ inputs.script }}"
+
+      - name: Test from repository config
+        if: steps.container.outputs.present == 'no' && hashFiles(inputs.script) == ''
+        run: |
+          set -euo pipefail
+          command="$(jq -r '.ci.command // .ci.script // empty' infra/config/repo.json 2>/dev/null || true)"
+          if [ -z "$command" ]; then
+            echo "no ${{ inputs.script }} and no .ci.command or .ci.script in infra/config/repo.json"
+            exit 1
+          fi
+          bash -lc "$command"
