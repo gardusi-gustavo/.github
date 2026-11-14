@@ -18,7 +18,7 @@ def default_root() -> pathlib.Path:
 ROOT = default_root()
 
 
-def git(args: list[str], cwd: pathlib.Path) -> str:
+def git(cwd: pathlib.Path, args: list[str]) -> str:
     return subprocess.run(["git", *args], cwd=cwd, text=True,
                           capture_output=True).stdout.strip()
 
