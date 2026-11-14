@@ -7,7 +7,7 @@ subdirectories under `.github/workflows`.
 | Template | Consumer path | Trigger |
 | --- | --- | --- |
 | `pull-request.yml` | `.github/workflows/event-pull-request.yml` | `pull_request` |
-| `release.yml` | `.github/workflows/event-release.yml` | `push: tags` |
+| `release.yml` | `.github/workflows/event-release.yml` | `release: published` |
 
 Rules:
 
