@@ -46,3 +46,33 @@ The standard rule requires one approval:
 Apply it to all repositories with `scripts/apply_rulesets.py`, which needs a
 one-time administration credential, or manually in the UI. SSH cannot change a
 ruleset.
+
+
+## Bot-created PRs, manual CI
+
+A repository may also run `generate.yml` manually. It uses `GITHUB_TOKEN` to push
+a branch and open a PR as `github-actions[bot]`.
+
+- The PR exists and is blocked until approval and checks.
+- CI does **not** run automatically, because GitHub suppresses events caused by
+  `GITHUB_TOKEN`.
+- There is no run to re-run. Trigger CI with an empty commit from the operator:
+
+  ```bash
+  git fetch origin bot/change
+  git checkout bot/change
+  git commit --allow-empty -m "ci: trigger"
+  git push origin bot/change
+  ```
+
+- Then the main account approves and merges.
+
+Repository settings required for the bot to create the PR:
+
+```
+Settings → Actions → General
+  Workflow permissions: Read and write
+  Allow GitHub Actions to create and approve pull requests
+```
+
+The approval rule still requires a human; the bot never approves.
