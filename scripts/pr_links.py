@@ -10,7 +10,12 @@ import argparse
 import pathlib
 import subprocess
 
-ROOT = pathlib.Path.home() / "github"
+def default_root() -> pathlib.Path:
+    termux = pathlib.Path("/data/data/com.termux/files/home/github")
+    return termux if termux.is_dir() else pathlib.Path.home() / "github"
+
+
+ROOT = default_root()
 
 
 def git(args: list[str], cwd: pathlib.Path) -> str:
