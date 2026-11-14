@@ -10,9 +10,10 @@ One standard ruleset for every active repository.
 | Deletion | blocked |
 | Non-fast-forward | blocked |
 | Linear history | required |
-| Pull request | required |
+| Pull request | required, **1 approval**, dismiss stale |
 | Required check | `ci / ci` |
 | Bypass actors | none |
+| Bot approvals | never; only the operator approves |
 
 Files:
 
