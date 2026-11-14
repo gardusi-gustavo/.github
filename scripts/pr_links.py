@@ -38,7 +38,10 @@ def main() -> int:
         slug = slug.split(":")[-1] if slug.startswith("git@") else slug.split("github.com/")[-1]
         git(repo, ["fetch", "-q", "origin"])
         heads = git(repo, ["for-each-ref", "--format=%(refname:short)", "refs/heads"]).splitlines()
+        merged = set(git(repo, ["branch", "--format=%(refname:short)", "--merged", "origin/main"]).splitlines())
         for branch in heads:
+            if branch in merged:
+                continue
             if branch == "main":
                 continue
             if args.branch and branch != args.branch:
