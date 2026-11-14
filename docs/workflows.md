@@ -6,7 +6,7 @@ and imported from `gardusi-gustavo/package-yml`.
 | File | Trigger |
 | --- | --- |
 | `.github/workflows/event-pull-request.yml` | `pull_request: branches: [main]` |
-| `.github/workflows/event-tag.yml` | `push: tags: ["v*"]` |
+| `.github/workflows/event-release.yml` | `release: types: [published]` |
 
 There is no `ci.yml`, no `release.yml`, and no combined `pipeline.yml`.
 
@@ -22,7 +22,7 @@ The folder structure lives in the **source**:
 package-yml/
   templates/event/
     pull-request.yml
-    tag.yml
+    release.yml
 ```
 
 and is flattened in consumers by the `event-` prefix.
@@ -46,25 +46,25 @@ jobs:
 The caller job stays `ci` on purpose: the required check context is `ci / ci`,
 and renaming the job would break branch protection.
 
-**`event-tag.yml`**
+**`event-release.yml`**
 
 ```yaml
-name: event-tag
+name: event-release
 on:
-  push:
-    tags: ["v*"]
+  release:
+    types: [published]
 permissions:
   contents: write
 jobs:
   release:
-    uses: gardusi-gustavo/package-yml/.github/workflows/event-tag.yml@release/v1
+    uses: gardusi-gustavo/package-yml/.github/workflows/event-release.yml@release/v1
 ```
 
 ## Repository surface
 
 ```text
 .github/workflows/event-pull-request.yml
-.github/workflows/event-tag.yml
+.github/workflows/event-release.yml
 scripts/test.sh                 optional
 scripts/release.sh              optional
 infra/docker/ci.dockerfile      optional, opt-in via ci.container
@@ -93,7 +93,7 @@ a schedule is added only after it passes. One issue tracks propagation.
 | Caller event | Reusable workflow |
 | --- | --- |
 | pull request | `event-pull-request.yml` |
-| tag | `event-tag.yml` |
+| release | `event-release.yml` |
 
 Logic changes in those files reach every repository without a pull request,
 because callers reference `release/v1`.
@@ -113,7 +113,7 @@ overrides.
 3. `.ci.command` or `.ci.script`;
 4. fail with a clear message.
 
-`event-tag.yml` uses `scripts/release.sh` when present; otherwise it archives the
+`event-release.yml` uses `scripts/release.sh` when present; otherwise it archives the
 tag and publishes a GitHub release from `dist/*`.
 
 ## Ref strategy

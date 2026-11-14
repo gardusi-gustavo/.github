@@ -44,12 +44,13 @@ REGISTRY = pathlib.Path(os.environ.get("WORKSPACE_GH_REGISTRY", GH_HOME / "regis
 TEMPLATES = pathlib.Path(__file__).resolve().parents[1] / "templates" / "event"
 TARGETS = {
     "pull-request.yml": pathlib.Path(".github/workflows/event-pull-request.yml"),
-    "tag.yml": pathlib.Path(".github/workflows/event-tag.yml"),
+    "release.yml": pathlib.Path(".github/workflows/event-release.yml"),
 }
 LEGACY = [
     pathlib.Path(".github/workflows/pipeline.yml"),
     pathlib.Path(".github/workflows/pr.yml"),
     pathlib.Path(".github/workflows/release.yml"),
+    pathlib.Path(".github/workflows/event-release.yml"),
 ]
 BRANCH = "workflow/callers"
 EXCLUDE = {

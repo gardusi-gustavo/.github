@@ -1,6 +1,6 @@
 # Propagate validated workflow templates
 
-One issue tracks the rollout of anything beyond `event-pull-request.yml` and `event-tag.yml`.
+One issue tracks the rollout of anything beyond `event-pull-request.yml` and `event-release.yml`.
 
 - [ ] `update` tested with a manual dispatch on `package-sh`
 - [ ] `janitor` tested with a manual dispatch on `package-wat`

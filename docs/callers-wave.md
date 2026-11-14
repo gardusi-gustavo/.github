@@ -1,6 +1,6 @@
 # Caller split wave
 
-Every consumer branch is `workflow/callers`: it adds `event-pull-request.yml` and `event-tag.yml`
+Every consumer branch is `workflow/callers`: it adds `event-pull-request.yml` and `event-release.yml`
 and removes `pipeline.yml`. Open the pull request from the compare link.
 
 - [ ] [gardusi-gustavo/contract-graphql](https://github.com/gardusi-gustavo/contract-graphql/compare/main...workflow/callers?expand=1)
