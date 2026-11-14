@@ -1,30 +1,38 @@
-# Pull requests without a bot
+# Pull requests: draft, then ready
 
-Direct pushes to `main` are forbidden by the `main-protection` ruleset. Every
-change needs a branch, a pull request, and one human approval.
+PRs are created as **drafts**. Draft means “waiting”: no CI runs. Marking a PR
+**ready for review** is the daily warm-up that starts CI. There is no empty
+commit and nothing to re-run.
 
-## Method
+## Daily loop
 
-1. Push a branch over SSH:
+```text
+issue
+  │  generate.yml (manual, opencode + GITHUB_TOKEN)
+  ▼
+draft PR            no CI, merge blocked
+  │  operator marks the PR ready for review
+  ▼
+CI runs             ci / ci
+  │  main account reviews carefully
+  ▼
+approve + merge     one approval required
+```
 
-   ```bash
-   git checkout -b change/name
-   git push -u origin change/name
-   ```
+## Generator
 
-2. Print the compare link:
+`generate.yml` is manual (`workflow_dispatch`) and takes:
 
-   ```bash
-   python3 scripts/pr_links.py --branch change/name
-   ```
+| Input | Meaning |
+| --- | --- |
+| `issue` | issue number to build |
+| `branch` | branch name |
+| `title` | PR title |
 
-3. Open the link in the browser and create the PR.
+It uses `scripts/generate.sh` in the repository, the repository's own
+`GITHUB_TOKEN`, and opens a **draft** PR. It never approves or merges.
 
-4. The main account approves and merges. The bot never approves.
-
-## Why not the bot
-
-A `GITHUB_TOKEN` workflow can create a PR only when the repository enables:
+Required repository settings, once per repo:
 
 ```
 Settings → Actions → General
@@ -32,47 +40,43 @@ Settings → Actions → General
   Allow GitHub Actions to create and approve pull requests
 ```
 
-That is per repository. It is deferred for now; the compare-link method needs no
-setting and no credential.
+## CI trigger
 
-## Ruleset
+`event-pull-request.yml` runs on:
 
-The standard rule requires one approval:
-
-```json
-"required_approving_review_count": 1
+```yaml
+on:
+  pull_request:
+    types: [opened, ready_for_review, synchronize, reopened]
+jobs:
+  ci:
+    if: github.event.pull_request.draft == false
 ```
 
-Apply it to all repositories with `scripts/apply_rulesets.py`, which needs a
-one-time administration credential, or manually in the UI. SSH cannot change a
-ruleset.
+So:
 
+- a draft PR produces no CI;
+- marking it ready produces `ci / ci`;
+- later commits to a ready PR re-run CI;
+- reopening or refreshing also runs CI.
 
-## Bot-created PRs, manual CI
+No `workflow_dispatch`, no empty commits.
 
-A repository may also run `generate.yml` manually. It uses `GITHUB_TOKEN` to push
-a branch and open a PR as `github-actions[bot]`.
+## Approval
 
-- The PR exists and is blocked until approval and checks.
-- CI does **not** run automatically, because GitHub suppresses events caused by
-  `GITHUB_TOKEN`.
-- There is no run to re-run. Trigger CI with an empty commit from the operator:
+The standard ruleset requires one approving review. The PR author is
+`github-actions[bot]`, so the main account can approve it. The bot never
+approves.
 
-  ```bash
-  git fetch origin bot/change
-  git checkout bot/change
-  git commit --allow-empty -m "ci: trigger"
-  git push origin bot/change
-  ```
+## Manual fallback
 
-- Then the main account approves and merges.
+If a PR is created without the generator:
 
-Repository settings required for the bot to create the PR:
-
-```
-Settings → Actions → General
-  Workflow permissions: Read and write
-  Allow GitHub Actions to create and approve pull requests
+```bash
+git checkout -b change/name
+git push -u origin change/name
+python3 scripts/pr_links.py --branch change/name
 ```
 
-The approval rule still requires a human; the bot never approves.
+Open the compare link, create the PR as a draft, then mark it ready when you
+intend to review it.

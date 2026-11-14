@@ -7,6 +7,7 @@ and imported from `gardusi-gustavo/package-yml`.
 | --- | --- |
 | `.github/workflows/event-pull-request.yml` | `pull_request: branches: [main]` |
 | `.github/workflows/event-release.yml` | `release: types: [published]` |
+| `.github/workflows/generate.yml` | manual: issue → draft PR |
 
 There is no `ci.yml`, no `release.yml`, and no combined `pipeline.yml`.
 
@@ -35,11 +36,13 @@ and is flattened in consumers by the `event-` prefix.
 name: event-pull-request
 on:
   pull_request:
+    types: [opened, ready_for_review, synchronize, reopened]
     branches: [main]
 permissions:
   contents: read
 jobs:
   ci:
+    if: github.event.pull_request.draft == false
     uses: gardusi-gustavo/package-yml/.github/workflows/event-pull-request.yml@release/v1
 ```
 
