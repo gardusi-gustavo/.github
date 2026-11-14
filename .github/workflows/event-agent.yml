@@ -1,0 +1,162 @@
+name: event-agent
+
+# Reusable comment-driven agent. The caller adds the issue_comment trigger.
+# Commands:
+#   /agent code            implement the issue as a draft PR
+#   /agent adjust <text>   adjust the pull request
+on:
+  workflow_call:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  agent:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Parse the command
+        id: command
+        env:
+          BODY: ${{ github.event.comment.body }}
+          ASSOC: ${{ github.event.comment.author_association }}
+          IS_PR: ${{ github.event.issue.pull_request != null }}
+        run: |
+          set -euo pipefail
+          case "$ASSOC" in
+            OWNER|MEMBER|COLLABORATOR) ;;
+            *) echo "ignored: author association $ASSOC"; exit 0 ;;
+          esac
+          [[ "$BODY" == /agent* ]] || exit 0
+          rest="${BODY#/agent}"
+          rest="${rest#"${rest%%[![:space:]]*}"}"
+          mode="${rest%% *}"
+          comment=""
+          [[ "$rest" == *" "* ]] && comment="${rest#* }"
+          case "$mode" in
+            code|adjust) ;;
+            *) echo "ignored: unknown command $mode"; exit 0 ;;
+          esac
+          if [[ "$mode" == code && "$IS_PR" == "true" ]]; then
+            echo "ignored: /agent code applies to issues, not pull requests"
+            exit 0
+          fi
+          if [[ "$mode" == adjust && "$IS_PR" != "true" ]]; then
+            echo "ignored: /agent adjust applies to pull requests"
+            exit 0
+          fi
+          {
+            echo "mode=$mode"
+            echo "comment<<EOF"
+            echo "$comment"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Resolve branch
+        id: branch
+        if: steps.command.outputs.mode != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUMBER: ${{ github.event.issue.number }}
+          MODE: ${{ steps.command.outputs.mode }}
+        run: |
+          set -euo pipefail
+          if [[ "$MODE" == code ]]; then
+            branch="agent/issue-${NUMBER}"
+            existing="$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$branch" --state open --json number --jq '.[0].number // empty')"
+            echo "branch=$branch" >> "$GITHUB_OUTPUT"
+            echo "exists=$existing" >> "$GITHUB_OUTPUT"
+          else
+            branch="$(gh pr view "$NUMBER" --repo "$GITHUB_REPOSITORY" --json headRefName --jq .headRefName)"
+            echo "branch=$branch" >> "$GITHUB_OUTPUT"
+            echo "exists=pr" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.command.outputs.mode != ''
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare branch
+        if: steps.command.outputs.mode != '' && steps.branch.outputs.exists == ''
+        run: |
+          set -euo pipefail
+          branch="${{ steps.branch.outputs.branch }}"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            git fetch origin "$branch"
+            git checkout -B "$branch" "origin/$branch"
+          else
+            git checkout -B "$branch"
+          fi
+
+      - name: Run the agent
+        if: steps.command.outputs.mode != '' && steps.branch.outputs.exists == ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          MODE: ${{ steps.command.outputs.mode }}
+          NUMBER: ${{ github.event.issue.number }}
+          COMMENT: ${{ steps.command.outputs.comment }}
+        run: |
+          set -euo pipefail
+          curl -fsSL \
+            https://raw.githubusercontent.com/gardusi-gustavo/package-sh/main/infra/scripts/agent/agent.sh \
+            -o /tmp/agent.sh
+          bash /tmp/agent.sh "$MODE" "$NUMBER" "$COMMENT"
+
+      - name: Commit and push
+        id: commit
+        if: steps.command.outputs.mode != '' && steps.branch.outputs.exists == ''
+        run: |
+          set -euo pipefail
+          branch="${{ steps.branch.outputs.branch }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "no changes"
+            exit 0
+          fi
+          git commit -m "agent: ${{ steps.command.outputs.mode }} #${{ github.event.issue.number }}"
+          git push -u origin "$branch"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Open the draft pull request
+        if: steps.command.outputs.mode == 'code' && steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          branch="${{ steps.branch.outputs.branch }}"
+          title="$(gh issue view "$NUMBER" --repo "$GITHUB_REPOSITORY" --json title --jq .title)"
+          gh pr create --repo "$GITHUB_REPOSITORY" \
+            --base main --head "$branch" \
+            --title "$title" \
+            --body "Closes #${NUMBER}
+
+          Draft prepared by opencode. Mark ready for review to run CI." \
+            --draft
+
+      - name: Report
+        if: steps.command.outputs.mode != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUMBER: ${{ github.event.issue.number }}
+          MODE: ${{ steps.command.outputs.mode }}
+          CHANGED: ${{ steps.commit.outputs.changed }}
+        run: |
+          set -euo pipefail
+          if [[ "$CHANGED" == "true" ]]; then
+            gh issue comment "$NUMBER" --repo "$GITHUB_REPOSITORY" \
+              --body "agent: $MODE complete. Draft is waiting for review."
+          elif [[ -z "${CHANGED:-}" ]]; then
+            gh issue comment "$NUMBER" --repo "$GITHUB_REPOSITORY" \
+              --body "agent: no branch work was needed."
+          else
+            gh issue comment "$NUMBER" --repo "$GITHUB_REPOSITORY" \
+              --body "agent: no changes produced."
+          fi
