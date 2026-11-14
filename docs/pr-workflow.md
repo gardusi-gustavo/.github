@@ -26,11 +26,14 @@ approve + merge     one approval required
 | Input | Meaning |
 | --- | --- |
 | `issue` | issue number to build |
-| `branch` | branch name |
-| `title` | PR title |
 
-It uses `scripts/generate.sh` in the repository, the repository's own
+The branch is `agent/issue-<number>`, so there is at most one open draft per
+issue. A second dispatch exits if the branch already has an open PR.
+
+It uses `infra/scripts/generate.sh` in the repository, the repository's own
 `GITHUB_TOKEN`, and opens a **draft** PR. It never approves or merges.
+The script runs `opencode run --auto` with `DEEPSEEK_API_KEY`; the secret must
+exist in the repository.
 
 Required repository settings, once per repo:
 

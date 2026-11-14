@@ -7,7 +7,7 @@ and imported from `gardusi-gustavo/package-yml`.
 | --- | --- |
 | `.github/workflows/event-pull-request.yml` | `pull_request: branches: [main]` |
 | `.github/workflows/event-release.yml` | `release: types: [published]` |
-| `.github/workflows/generate.yml` | manual: issue → draft PR |
+| `.github/workflows/generate.yml` | manual: one issue → one draft PR |
 
 There is no `ci.yml`, no `release.yml`, and no combined `pipeline.yml`.
 
